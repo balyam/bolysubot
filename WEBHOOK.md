@@ -196,19 +196,19 @@ python app_combined.py
 
 ## 🐧 Systemd сервис
 
-Создайте `/etc/systemd/system/bolysubot.service`:
+Создайте `/etc/systemd/system/osialmatybot.service`:
 
 ```ini
 [Unit]
-Description=BolySuBot Telegram Bot
+Description=ОСИ Алматы Telegram Bot
 After=network.target postgresql.service
 
 [Service]
 Type=simple
 User=your_user
-WorkingDirectory=/path/to/bolysubot
-Environment="PATH=/path/to/bolysubot/.venv/bin"
-ExecStart=/path/to/bolysubot/.venv/bin/python app_combined.py
+WorkingDirectory=/path/to/osialmatybot
+Environment="PATH=/path/to/osialmatybot/.venv/bin"
+ExecStart=/path/to/osialmatybot/.venv/bin/python app_combined.py
 Restart=always
 RestartSec=10
 
@@ -219,14 +219,14 @@ WantedBy=multi-user.target
 Активируйте:
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable bolysubot
-sudo systemctl start bolysubot
-sudo systemctl status bolysubot
+sudo systemctl enable osialmatybot
+sudo systemctl start osialmatybot
+sudo systemctl status osialmatybot
 ```
 
 Логи:
 ```bash
-sudo journalctl -u bolysubot -f
+sudo journalctl -u osialmatybot -f
 ```
 
 ## 🧪 Тестирование webhook

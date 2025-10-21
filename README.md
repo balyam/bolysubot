@@ -1,6 +1,6 @@
-# BolySuBot - Бот для поиска исполнителей
+# ОСИ Алматы - Бот для поиска исполнителей
 
-Telegram-бот для помощи в поиске исполнителей различных услуг. Включает поиск по категориям, геолокации, систему отзывов и веб-админку для управления.
+Telegram-бот для помощи в поиске исполнителей различных услуг в Алматы. Включает поиск по категориям, геолокации, систему отзывов и веб-админку для управления.
 
 ## 🚀 Возможности
 
@@ -47,11 +47,11 @@ pip install -r requirements.txt
 
 ```bash
 # Создайте базу данных
-createdb bolysubot
+createdb osialmatybot
 
 # Или через psql:
 psql -U postgres
-CREATE DATABASE bolysubot;
+CREATE DATABASE osialmatybot;
 \q
 ```
 
@@ -71,7 +71,7 @@ cp .env.example .env
 BOT_TOKEN=your_bot_token_from_botfather
 
 # Database
-DATABASE_URL=postgresql+asyncpg://username:password@localhost:5432/bolysubot
+DATABASE_URL=postgresql+asyncpg://username:password@localhost:5432/osialmatybot
 
 # Admin Panel
 ADMIN_USERNAME=admin
@@ -132,7 +132,7 @@ python main_webhook.py
 ## 📂 Структура проекта
 
 ```
-bolysubot/
+osialmatybot/
 ├── app/
 │   ├── models/          # SQLAlchemy модели
 │   ├── database/        # Подключение к БД

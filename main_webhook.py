@@ -20,7 +20,7 @@ if __name__ == "__main__":
     app = create_app()
     
     print("=" * 60)
-    print("🚀 BolySuBot (Webhook режим)")
+    print("🚀 ОСИ Алматы (Webhook режим)")
     print("-" * 60)
     print(f"Webhook URL: {settings.webhook_url}")
     print(f"Сервер: http://{settings.WEBAPP_HOST}:{settings.WEBAPP_PORT}")

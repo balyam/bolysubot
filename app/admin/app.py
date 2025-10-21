@@ -19,8 +19,8 @@ def create_admin_app() -> FastAPI:
     """Создать FastAPI приложение с админ-панелью"""
     
     app = FastAPI(
-        title="BolySuBot Admin",
-        description="Админ-панель для управления ботом поиска исполнителей",
+        title="ОСИ Алматы Admin",
+        description="Админ-панель для управления ботом ОСИ Алматы",
         version="1.0.0"
     )
     
@@ -43,7 +43,7 @@ def create_admin_app() -> FastAPI:
     admin = Admin(
         app=app,
         engine=sync_engine,
-        title="BolySuBot Admin",
+        title="ОСИ Алматы Admin",
         authentication_backend=authentication_backend
     )
     
@@ -57,7 +57,7 @@ def create_admin_app() -> FastAPI:
     
     @app.get("/")
     async def root():
-        return {"message": "BolySuBot Admin API. Go to /admin to access admin panel."}
+        return {"message": "ОСИ Алматы Admin API. Go to /admin to access admin panel."}
     
     return app
 

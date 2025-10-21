@@ -28,7 +28,7 @@ async def cmd_start(message: Message, session: AsyncSession, user: User):
                 await session.commit()
                 
                 await message.answer(
-                    "✅ Токен принят! Добро пожаловать в бот поиска исполнителей!"
+                    "✅ Токен принят! Добро пожаловать в ОСИ Алматы!"
                 )
             else:
                 await message.answer(
@@ -57,7 +57,7 @@ async def cmd_start(message: Message, session: AsyncSession, user: User):
     # Проверяем, выбран ли регион
     if not user.preferred_region_id:
         await message.answer(
-            "👋 Добро пожаловать в бот поиска исполнителей!\n\n"
+            "👋 Добро пожаловать в ОСИ Алматы!\n\n"
             "Для начала работы, пожалуйста, выберите ваш регион:",
         )
         # Перенаправляем на выбор региона

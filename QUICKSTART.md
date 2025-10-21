@@ -19,14 +19,14 @@ pip install -r requirements.txt
 
 ```sql
 -- Создайте БД в PostgreSQL
-CREATE DATABASE bolysubot;
+CREATE DATABASE osialmatybot;
 ```
 
 ## 3. Создайте .env файл
 
 ```env
 BOT_TOKEN=your_bot_token_here
-DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:5432/bolysubot
+DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:5432/osialmatybot
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin123
 ADMIN_SECRET_KEY=super-secret-key-change-me

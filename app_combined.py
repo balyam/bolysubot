@@ -118,7 +118,7 @@ def create_app() -> FastAPI:
     async def root():
         """Корневой эндпоинт"""
         return {
-            "message": "BolySuBot API",
+            "message": "ОСИ Алматы API",
             "admin": "/admin",
             "webhook_mode": settings.USE_WEBHOOK,
             "webhook_path": settings.WEBHOOK_PATH if settings.USE_WEBHOOK else None
@@ -141,7 +141,7 @@ if __name__ == "__main__":
     app = create_app()
     
     print("=" * 60)
-    print("🚀 BolySuBot запущен!")
+    print("🚀 ОСИ Алматы запущен!")
     print("-" * 60)
     print(f"Режим бота: {'Webhook' if settings.USE_WEBHOOK else 'Polling'}")
     if settings.USE_WEBHOOK:

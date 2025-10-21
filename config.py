@@ -20,6 +20,16 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     PHOTOS_DIR: str = "storage/photos/contractors"
     
+    # Webhook Settings
+    USE_WEBHOOK: bool = False  # False = polling, True = webhook
+    WEBHOOK_HOST: str = ""  # Например: https://yourdomain.com
+    WEBHOOK_PATH: str = "/webhook"  # Путь для webhook
+    WEBHOOK_SECRET: str = ""  # Секретный токен для проверки webhook
+    
+    # Web App Settings
+    WEBAPP_HOST: str = "0.0.0.0"
+    WEBAPP_PORT: int = 8000
+    
     # Access Control
     ACCESS_MODE: str = "open"  # open, whitelist, invite_only
     ADMIN_TELEGRAM_IDS: str = ""  # Comma-separated admin telegram IDs
@@ -44,6 +54,13 @@ class Settings(BaseSettings):
         if not self.ADMIN_TELEGRAM_IDS:
             return []
         return [int(id_.strip()) for id_ in self.ADMIN_TELEGRAM_IDS.split(",") if id_.strip()]
+    
+    @property
+    def webhook_url(self) -> str:
+        """Полный URL webhook"""
+        if not self.WEBHOOK_HOST:
+            return ""
+        return f"{self.WEBHOOK_HOST.rstrip('/')}{self.WEBHOOK_PATH}"
 
 
 # Создаем глобальный экземпляр настроек
