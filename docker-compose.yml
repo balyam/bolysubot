@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: bolysubot_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: bolysubot
+      POSTGRES_USER: bolysubot_user
+      POSTGRES_PASSWORD: bolysubot_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bolysubot_user -d bolysubot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Раскомментируйте, если хотите запускать бота в Docker
+  # bot:
+  #   build: .
+  #   container_name: bolysubot
+  #   restart: unless-stopped
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   env_file:
+  #     - .env
+  #   volumes:
+  #     - ./storage:/app/storage
+  #   command: python main.py
+
+  # admin:
+  #   build: .
+  #   container_name: bolysubot_admin
+  #   restart: unless-stopped
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - "8000:8000"
+  #   command: python admin_run.py
+
+volumes:
+  postgres_data:
+

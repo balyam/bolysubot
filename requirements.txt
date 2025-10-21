@@ -1,0 +1,27 @@
+# Bot
+aiogram==3.15.0
+aiofiles==24.1.0
+
+# Database
+SQLAlchemy==2.0.36
+asyncpg==0.30.0
+psycopg2-binary==2.9.9
+alembic==1.14.0
+
+# Admin Panel
+fastapi==0.115.5
+sqladmin==0.19.0
+uvicorn[standard]==0.32.1
+jinja2==3.1.4
+itsdangerous==2.2.0
+
+# Config & Utils
+pydantic-settings==2.6.1
+python-dotenv==1.0.1
+
+# Image processing
+Pillow==11.0.0
+
+# Scheduler (для автоматической проверки премиум-подписок)
+apscheduler==3.10.4
+
