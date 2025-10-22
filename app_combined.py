@@ -55,6 +55,8 @@ async def lifespan(app: FastAPI):
     # Регистрация роутеров
     dp.include_router(main_router)
     
+    polling_task = None
+    
     if settings.USE_WEBHOOK:
         # Настройка webhook
         webhook_url = settings.webhook_url
@@ -71,7 +73,17 @@ async def lifespan(app: FastAPI):
     else:
         # Удаляем webhook для polling режима
         await bot.delete_webhook(drop_pending_updates=True)
-        logger.info("Webhook deleted, using polling mode")
+        logger.info("Webhook deleted, starting polling mode...")
+        
+        # Запускаем polling в фоновой задаче
+        async def run_polling():
+            try:
+                await dp.start_polling(bot)
+            except Exception as e:
+                logger.error(f"Polling error: {e}")
+        
+        polling_task = asyncio.create_task(run_polling())
+        logger.info("Polling task started")
     
     logger.info("Bot started successfully")
     
@@ -79,6 +91,15 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("Shutting down...")
+    
+    # Останавливаем polling если запущен
+    if polling_task and not polling_task.done():
+        polling_task.cancel()
+        try:
+            await polling_task
+        except asyncio.CancelledError:
+            pass
+    
     await bot.session.close()
     logger.info("Application stopped")
 

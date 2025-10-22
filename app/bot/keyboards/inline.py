@@ -81,13 +81,12 @@ def contractor_card_keyboard(contractor_id: int, phone: str, telegram_username: 
     """Клавиатура карточки исполнителя"""
     builder = InlineKeyboardBuilder()
     
-    builder.row(
-        InlineKeyboardButton(text="📞 Позвонить", url=f"tel:{phone}")
-    )
+    # Telegram не поддерживает tel: ссылки в inline кнопках
+    # Номер телефона показывается в тексте карточки
     
     if telegram_username:
         builder.row(
-            InlineKeyboardButton(text="✈️ Telegram", url=f"https://t.me/{telegram_username}")
+            InlineKeyboardButton(text="✈️ Написать в Telegram", url=f"https://t.me/{telegram_username}")
         )
     
     builder.row(
@@ -96,7 +95,7 @@ def contractor_card_keyboard(contractor_id: int, phone: str, telegram_username: 
     )
     
     builder.row(
-        InlineKeyboardButton(text="⬅️ Назад к поиску", callback_data="back_to_search")
+        InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_search")
     )
     
     return builder.as_markup()
