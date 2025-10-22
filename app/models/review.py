@@ -14,7 +14,7 @@ class Review(Base, TimestampMixin):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     user_name: Mapped[Optional[str]] = mapped_column(String(255))  # Имя пользователя из Telegram
     rating: Mapped[int] = mapped_column(Integer, nullable=False)  # 1-5 звёзд
-    comment: Mapped[Optional[str]] = mapped_column(Text)
+    comment: Mapped[Optional[str]] = mapped_column(String(500))
     is_moderated: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     is_visible: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     

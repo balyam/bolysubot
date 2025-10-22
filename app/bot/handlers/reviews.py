@@ -127,7 +127,7 @@ async def callback_rate_contractor(callback: CallbackQuery, state: FSMContext, s
     stars = "⭐" * rating
     text = (
         f"Ваша оценка: {stars}\n\n"
-        "📝 Напишите комментарий к отзыву или нажмите /skip чтобы пропустить:"
+        "📝 Напишите комментарий к отзыву (максимум 500 символов) или нажмите /skip чтобы пропустить:"
     )
     
     await callback.message.edit_text(text, reply_markup=back_to_main_menu())
@@ -138,6 +138,15 @@ async def callback_rate_contractor(callback: CallbackQuery, state: FSMContext, s
 async def process_review_comment(message: Message, state: FSMContext, session: AsyncSession, user: User):
     """Обработка комментария к отзыву"""
     comment = None if message.text == "/skip" else message.text.strip()
+    
+    # Валидация длины комментария
+    if comment and len(comment) > 500:
+        await message.answer(
+            f"❌ Комментарий слишком длинный ({len(comment)} символов).\n"
+            "Максимальная длина комментария: 500 символов.\n\n"
+            "Пожалуйста, сократите комментарий и отправьте снова:"
+        )
+        return
     
     # Получаем данные из состояния
     data = await state.get_data()
