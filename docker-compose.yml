@@ -1,3 +1,21 @@
+# Dev-окружение: Postgres + миграции + бот (polling) + админка.
+#   docker compose up -d --build
+#   админка: http://localhost:8001/admin
+#
+# Код монтируется в контейнер, бот и админка перезапускаются при изменении
+# файлов в app/. Настройки читаются из .env (смонтирован вместе с кодом),
+# DATABASE_URL переопределён на хост postgres внутри docker-сети.
+
+x-app: &app
+  build: .
+  image: osialmatybot:dev
+  volumes:
+    - .:/app
+  environment:
+    DATABASE_URL: postgresql+asyncpg://osialmatybot_user:osialmatybot_password@postgres:5432/osialmatybot
+    PYTHONUNBUFFERED: "1"
+  restart: unless-stopped
+
 services:
   postgres:
     image: postgres:15-alpine
@@ -8,7 +26,7 @@ services:
       POSTGRES_USER: osialmatybot_user
       POSTGRES_PASSWORD: osialmatybot_password
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -17,33 +35,35 @@ services:
       timeout: 5s
       retries: 5
 
-  # Раскомментируйте, если хотите запускать бота в Docker
-  # bot:
-  #   build: .
-  #   container_name: osialmatybot
-  #   restart: unless-stopped
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #   env_file:
-  #     - .env
-  #   volumes:
-  #     - ./storage:/app/storage
-  #   command: python main.py
+  migrate:
+    <<: *app
+    container_name: osialmatybot_migrate
+    command: alembic upgrade head
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
-  # admin:
-  #   build: .
-  #   container_name: osialmatybot_admin
-  #   restart: unless-stopped
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #   env_file:
-  #     - .env
-  #   ports:
-  #     - "8000:8000"
-  #   command: python admin_run.py
+  bot:
+    <<: *app
+    container_name: osialmatybot_bot
+    # Перезапуск бота при изменении .py файлов в app/
+    command: watchfiles --filter python "python main.py" app
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  admin:
+    <<: *app
+    container_name: osialmatybot_admin
+    command: >
+      uvicorn app.admin.app:create_admin_app --factory
+      --host 0.0.0.0 --port 8000 --reload --reload-dir app
+    ports:
+      - "127.0.0.1:8001:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   postgres_data:
-
