@@ -1,3 +1,4 @@
+import hmac
 from typing import Optional
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
@@ -11,11 +12,13 @@ class AdminAuth(AuthenticationBackend):
     
     async def login(self, request: Request) -> bool:
         form = await request.form()
-        username = form.get("username")
-        password = form.get("password")
+        username = str(form.get("username") or "")
+        password = str(form.get("password") or "")
         
-        # Простая проверка логина/пароля
-        if username == settings.ADMIN_USERNAME and password == settings.ADMIN_PASSWORD:
+        # Сравнение за постоянное время (защита от timing-атак)
+        username_ok = hmac.compare_digest(username.encode(), settings.ADMIN_USERNAME.encode())
+        password_ok = hmac.compare_digest(password.encode(), settings.ADMIN_PASSWORD.encode())
+        if username_ok and password_ok:
             # Сохраняем в сессии
             request.session.update({"token": "authenticated"})
             return True

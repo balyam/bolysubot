@@ -1,18 +1,21 @@
 from aiogram import Router, F
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message, CallbackQuery
+from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import User
 from app.bot.keyboards.inline import main_menu_keyboard
+from app.utils.helpers import h, edit_or_send
 from config import settings
 
 router = Router()
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message, session: AsyncSession, user: User):
+async def cmd_start(message: Message, session: AsyncSession, user: User, state: FSMContext):
     """Обработка команды /start"""
+    await state.clear()
     
     # Проверка доступа
     if not user.is_approved and not user.is_admin:
@@ -49,8 +52,7 @@ async def cmd_start(message: Message, session: AsyncSession, user: User):
             elif settings.ACCESS_MODE == "whitelist":
                 await message.answer(
                     "❌ Доступ к боту ограничен.\n\n"
-                    "Ваш запрос отправлен администратору.\n"
-                    "Ожидайте одобрения."
+                    "Для получения доступа свяжитесь с администратором."
                 )
                 return
     
@@ -72,8 +74,8 @@ async def show_main_menu(message: Message, user: User):
     region_name = user.preferred_region.name if user.preferred_region else "Не выбран"
     
     text = (
-        f"👋 Добро пожаловать, {user.first_name or 'пользователь'}!\n\n"
-        f"📍 Ваш регион: {region_name}\n\n"
+        f"👋 Добро пожаловать, {h(user.first_name or 'пользователь')}!\n\n"
+        f"📍 Ваш регион: {h(region_name)}\n\n"
         "Выберите действие:"
     )
     
@@ -81,16 +83,25 @@ async def show_main_menu(message: Message, user: User):
 
 
 @router.callback_query(F.data == "main_menu")
-async def callback_main_menu(callback: CallbackQuery, user: User):
+async def callback_main_menu(callback: CallbackQuery, user: User, state: FSMContext):
     """Возврат в главное меню"""
+    # Выходим из режимов ввода (поиск, отзыв), чтобы следующий текст
+    # не был воспринят как запрос/комментарий
+    await state.set_state(None)
     region_name = user.preferred_region.name if user.preferred_region else "Не выбран"
     
     text = (
         f"👋 Главное меню\n\n"
-        f"📍 Ваш регион: {region_name}\n\n"
+        f"📍 Ваш регион: {h(region_name)}\n\n"
         "Выберите действие:"
     )
     
-    await callback.message.edit_text(text, reply_markup=main_menu_keyboard())
+    await edit_or_send(callback.message, text, reply_markup=main_menu_keyboard())
+    await callback.answer()
+
+
+@router.callback_query(F.data == "noop")
+async def callback_noop(callback: CallbackQuery):
+    """Кнопки-индикаторы (номер страницы) — просто снимаем «часики»"""
     await callback.answer()
 

@@ -17,6 +17,12 @@ if __name__ == "__main__":
         print("Укажите ваш домен, например: WEBHOOK_HOST=https://yourdomain.com")
         exit(1)
     
+    if not settings.WEBHOOK_SECRET:
+        print("❌ WEBHOOK_SECRET не указан в .env")
+        print("Без секрета любой может отправить поддельный update на webhook.")
+        print("Сгенерируйте: python -c \"import secrets; print(secrets.token_urlsafe(32))\"")
+        exit(1)
+    
     app = create_app()
     
     print("=" * 60)

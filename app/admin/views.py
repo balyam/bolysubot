@@ -1,10 +1,13 @@
+import anyio
 from sqladmin import ModelView
+from starlette.requests import Request
 from wtforms import TextAreaField
 from wtforms.widgets import TextArea
 
 from app.models import (
     User, Region, Category, Contractor, ContractorPhoto, Review
 )
+from app.services.reviews import update_contractor_rating_sync
 
 
 class UserAdmin(ModelView, model=User):
@@ -234,3 +237,33 @@ class ReviewAdmin(ModelView, model=Review):
         Review.comment: lambda m, a: (m.comment[:50] + "...") if m.comment and len(m.comment) > 50 else m.comment or "",
     }
 
+
+    # --- Пересчёт рейтинга исполнителя при модерации/изменении/удалении ---
+
+    async def on_model_change(self, data: dict, model: Review, is_created: bool, request: Request) -> None:
+        # Запоминаем исходного исполнителя: отзыв могут перепривязать к другому
+        request.state.review_contractor_ids = {model.contractor_id} if not is_created else set()
+
+    async def after_model_change(self, data: dict, model: Review, is_created: bool, request: Request) -> None:
+        ids = set(getattr(request.state, "review_contractor_ids", set()))
+        ids.add(model.contractor_id)
+        await self._recalculate_ratings(ids)
+
+    async def on_model_delete(self, model: Review, request: Request) -> None:
+        request.state.review_contractor_ids = {model.contractor_id}
+
+    async def after_model_delete(self, model: Review, request: Request) -> None:
+        await self._recalculate_ratings(getattr(request.state, "review_contractor_ids", set()))
+
+    async def _recalculate_ratings(self, contractor_ids: set) -> None:
+        ids = [cid for cid in contractor_ids if cid]
+        if not ids:
+            return
+
+        def run() -> None:
+            with self.session_maker() as session:
+                for cid in ids:
+                    update_contractor_rating_sync(session, cid)
+                session.commit()
+
+        await anyio.to_thread.run_sync(run)

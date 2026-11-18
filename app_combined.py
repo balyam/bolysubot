@@ -3,15 +3,15 @@
 Работает с webhook
 """
 import asyncio
+import hmac
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.types import Update
-from aiogram.webhook.aiohttp_server import SimpleRequestHandler
 
 from config import settings
 from app.bot.handlers import main_router
@@ -62,12 +62,14 @@ async def lifespan(app: FastAPI):
         webhook_url = settings.webhook_url
         if not webhook_url:
             raise ValueError("WEBHOOK_HOST must be set when USE_WEBHOOK=True")
+        if not settings.WEBHOOK_SECRET:
+            raise ValueError("WEBHOOK_SECRET must be set when USE_WEBHOOK=True")
         
         logger.info(f"Setting webhook: {webhook_url}")
         await bot.set_webhook(
             url=webhook_url,
             drop_pending_updates=True,
-            secret_token=settings.WEBHOOK_SECRET or None
+            secret_token=settings.WEBHOOK_SECRET
         )
         logger.info("Webhook set successfully")
     else:
@@ -116,24 +118,24 @@ def create_app() -> FastAPI:
     # Добавляем endpoint для webhook
     if settings.USE_WEBHOOK:
         @app.post(settings.WEBHOOK_PATH)
-        async def webhook_handler(request: Request) -> dict:
+        async def webhook_handler(request: Request):
             """Обработчик webhook от Telegram"""
-            # Проверка секретного токена
-            if settings.WEBHOOK_SECRET:
-                token = request.headers.get("X-Telegram-Bot-Api-Secret-Token")
-                if token != settings.WEBHOOK_SECRET:
-                    logger.warning("Invalid webhook secret token")
-                    return {"status": "error", "message": "Invalid secret token"}
+            # Проверка секретного токена (без него можно подделать update
+            # от имени любого пользователя, включая администраторов)
+            token = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+            if not hmac.compare_digest(token.encode(), settings.WEBHOOK_SECRET.encode()):
+                logger.warning("Invalid webhook secret token")
+                return Response(status_code=401)
             
             # Получаем update
             try:
                 update_data = await request.json()
                 update = Update(**update_data)
                 await dp.feed_update(bot, update)
-                return {"status": "ok"}
-            except Exception as e:
-                logger.error(f"Error processing webhook: {e}")
-                return {"status": "error", "message": str(e)}
+            except Exception:
+                # Отвечаем 200, чтобы Telegram не ретраил «битый» update бесконечно
+                logger.exception("Error processing webhook")
+            return {"status": "ok"}
     
     @app.get("/")
     async def root():
@@ -168,8 +170,6 @@ if __name__ == "__main__":
     if settings.USE_WEBHOOK:
         print(f"Webhook URL: {settings.webhook_url}")
     print(f"Админка: http://{settings.WEBAPP_HOST}:{settings.WEBAPP_PORT}/admin")
-    print(f"Логин: {settings.ADMIN_USERNAME}")
-    print(f"Пароль: {settings.ADMIN_PASSWORD}")
     print("=" * 60)
     
     uvicorn.run(

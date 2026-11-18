@@ -5,6 +5,7 @@ from sqlalchemy import select
 
 from app.models import User, Region
 from app.bot.keyboards.inline import regions_keyboard, main_menu_keyboard
+from app.utils.helpers import h, edit_or_send
 
 router = Router()
 
@@ -47,7 +48,7 @@ async def callback_change_region(callback: CallbackQuery, session: AsyncSession,
     regions = result.all()
     
     text = "📍 Выберите новый регион:"
-    await callback.message.edit_text(text, reply_markup=regions_keyboard(regions))
+    await edit_or_send(callback.message, text, reply_markup=regions_keyboard(regions))
     await callback.answer()
 
 
@@ -56,19 +57,23 @@ async def callback_select_region(callback: CallbackQuery, session: AsyncSession,
     """Выбор региона"""
     region_id = int(callback.data.split(":")[1])
     
-    # Обновляем регион пользователя
-    user.preferred_region_id = region_id
-    await session.commit()
-    await session.refresh(user)
+    region = await session.get(Region, region_id)
+    if not region or not region.is_active:
+        await callback.answer("Регион недоступен", show_alert=True)
+        return
     
-    region_name = user.preferred_region.name if user.preferred_region else "Не выбран"
+    # Обновляем регион пользователя
+    user.preferred_region = region
+    await session.commit()
+
+    region_name = region.name
     
     text = (
-        f"✅ Регион изменён на: {region_name}\n\n"
+        f"✅ Регион изменён на: {h(region_name)}\n\n"
         "Выберите действие:"
     )
     
-    await callback.message.edit_text(text, reply_markup=main_menu_keyboard())
+    await edit_or_send(callback.message, text, reply_markup=main_menu_keyboard())
     await callback.answer(f"Регион изменён: {region_name}")
 
 
@@ -85,6 +90,6 @@ async def callback_regions_page(callback: CallbackQuery, session: AsyncSession, 
     regions = result.all()
     
     text = "📍 Выберите ваш регион:"
-    await callback.message.edit_text(text, reply_markup=regions_keyboard(regions, page))
+    await edit_or_send(callback.message, text, reply_markup=regions_keyboard(regions, page))
     await callback.answer()
 
