@@ -27,7 +27,9 @@ def create_admin_app() -> FastAPI:
     # Добавляем middleware для сессий (требуется для аутентификации)
     app.add_middleware(
         SessionMiddleware,
-        secret_key=settings.ADMIN_SECRET_KEY
+        secret_key=settings.ADMIN_SECRET_KEY,
+        https_only=settings.SESSION_HTTPS_ONLY,
+        same_site="lax",
     )
     
     # Создаём синхронный engine для SQLAdmin (он не поддерживает async engine)

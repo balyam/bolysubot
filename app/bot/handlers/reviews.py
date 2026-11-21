@@ -4,6 +4,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.models import Contractor, Review, User
 from app.bot.keyboards.inline import reviews_keyboard, rating_keyboard, back_to_main_menu
@@ -19,6 +20,13 @@ class ReviewStates(StatesGroup):
     """Состояния для написания отзыва"""
     waiting_for_rating = State()
     waiting_for_comment = State()
+
+
+async def finish_review_flow(state: FSMContext) -> None:
+    """Выйти из сценария отзыва, сохранив остальные данные (результаты поиска)"""
+    data = await state.get_data()
+    await state.set_data({k: v for k, v in data.items() if k not in ("contractor_id", "rating")})
+    await state.set_state(None)
 
 
 async def _has_review(session: AsyncSession, contractor_id: int, user_id: int) -> bool:
@@ -178,7 +186,7 @@ async def process_review_comment(message: Message, state: FSMContext, session: A
 
     if not contractor_id or not rating:
         await message.answer("Ошибка: данные отзыва не найдены. Начните заново.")
-        await state.clear()
+        await finish_review_flow(state)
         return
 
     # Повторная проверка (на случай двух параллельных сценариев)
@@ -188,7 +196,7 @@ async def process_review_comment(message: Message, state: FSMContext, session: A
             "Редактирование отзывов пока не поддерживается.",
             reply_markup=back_to_main_menu()
         )
-        await state.clear()
+        await finish_review_flow(state)
         return
 
     # Создаём отзыв. Рейтинг исполнителя пересчитывается после модерации
@@ -204,7 +212,17 @@ async def process_review_comment(message: Message, state: FSMContext, session: A
         is_visible=True
     )
     session.add(review)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        # Параллельный отзыв (двойное нажатие) упёрся в uq_reviews_user_contractor
+        await session.rollback()
+        await message.answer(
+            "❌ Вы уже оставляли отзыв этому исполнителю.",
+            reply_markup=back_to_main_menu()
+        )
+        await finish_review_flow(state)
+        return
 
     await message.answer(
         "✅ Спасибо! Ваш отзыв отправлен на модерацию.\n"
@@ -212,7 +230,7 @@ async def process_review_comment(message: Message, state: FSMContext, session: A
         reply_markup=back_to_main_menu()
     )
 
-    await state.clear()
+    await finish_review_flow(state)
 
 
 @router.message(ReviewStates.waiting_for_comment)

@@ -1,6 +1,6 @@
 from aiogram import BaseMiddleware
-from aiogram.types import TelegramObject, User as TgUser, Message, CallbackQuery
-from typing import Callable, Dict, Any, Awaitable
+from aiogram.types import TelegramObject, User as TgUser, Message, CallbackQuery, Update
+from typing import Callable, Dict, Any, Awaitable, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session_maker
@@ -99,8 +99,12 @@ class UserMiddleware(BaseMiddleware):
 
 
 class AccessControlMiddleware(BaseMiddleware):
-    """Middleware для проверки доступа к боту"""
-    
+    """Middleware для проверки доступа к боту.
+
+    Регистрируется на dp.update, поэтому event здесь — Update;
+    сообщение или callback достаём из него.
+    """
+
     async def __call__(
         self,
         handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
@@ -108,44 +112,56 @@ class AccessControlMiddleware(BaseMiddleware):
         data: Dict[str, Any]
     ) -> Any:
         user: User = data.get("user")
-        
+
         # Если пользователь не загружен, пропускаем
         if not user:
             return await handler(event, data)
-        
+
         # Администраторы всегда имеют доступ
         if user.is_admin:
             return await handler(event, data)
-        
+
+        message, callback = self._unwrap(event)
+
         # Заблокированные пользователи не имеют доступа
         if user.is_blocked:
-            message = "❌ Ваш доступ к боту заблокирован."
-            if isinstance(event, Message):
-                await event.answer(message)
-            elif isinstance(event, CallbackQuery):
-                await event.answer(message, show_alert=True)
+            await self._deny(message, callback, "❌ Ваш доступ к боту заблокирован.")
             return
-        
+
         # Режим "open" - всем доступ
         if settings.ACCESS_MODE == "open":
             return await handler(event, data)
-        
+
         # Проверяем одобрение
         if not user.is_approved:
             # Разрешаем команду /start для ввода токена
-            if isinstance(event, Message) and event.text and event.text.startswith("/start"):
+            if message and message.text and message.text.startswith("/start"):
                 return await handler(event, data)
-            
-            message = (
+
+            await self._deny(
+                message,
+                callback,
                 "❌ У вас нет доступа к боту.\n\n"
                 "Для получения доступа свяжитесь с администратором "
                 "или используйте команду /start с токеном приглашения."
             )
-            if isinstance(event, Message):
-                await event.answer(message)
-            elif isinstance(event, CallbackQuery):
-                await event.answer(message, show_alert=True)
             return
-        
+
         return await handler(event, data)
 
+    @staticmethod
+    def _unwrap(event: TelegramObject) -> tuple[Optional[Message], Optional[CallbackQuery]]:
+        if isinstance(event, Update):
+            return event.message, event.callback_query
+        if isinstance(event, Message):
+            return event, None
+        if isinstance(event, CallbackQuery):
+            return None, event
+        return None, None
+
+    @staticmethod
+    async def _deny(message: Optional[Message], callback: Optional[CallbackQuery], text: str) -> None:
+        if message:
+            await message.answer(text)
+        elif callback:
+            await callback.answer(text, show_alert=True)

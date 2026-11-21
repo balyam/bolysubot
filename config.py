@@ -1,3 +1,4 @@
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
 
@@ -15,6 +16,7 @@ class Settings(BaseSettings):
     ADMIN_USERNAME: str
     ADMIN_PASSWORD: str
     ADMIN_SECRET_KEY: str
+    SESSION_HTTPS_ONLY: bool = False  # True в проде: cookie админки только по HTTPS
     
     # App Settings
     DEBUG: bool = False
@@ -40,6 +42,15 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False
     )
+    
+    @model_validator(mode="after")
+    def _check_webhook(self) -> "Settings":
+        if self.USE_WEBHOOK:
+            if not self.WEBHOOK_HOST.startswith("https://"):
+                raise ValueError("USE_WEBHOOK=True требует WEBHOOK_HOST вида https://домен")
+            if not self.WEBHOOK_SECRET:
+                raise ValueError("USE_WEBHOOK=True требует WEBHOOK_SECRET (иначе webhook примет запрос от кого угодно)")
+        return self
     
     @property
     def photos_path(self) -> Path:

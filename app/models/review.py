@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Text, Integer, BigInteger, Boolean, ForeignKey, DateTime, func, CheckConstraint
+from sqlalchemy import String, Text, Integer, BigInteger, Boolean, ForeignKey, DateTime, func, CheckConstraint, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin
 
@@ -25,6 +25,8 @@ class Review(Base, TimestampMixin):
     # Ограничение на рейтинг (1-5)
     __table_args__ = (
         CheckConstraint("rating >= 1 AND rating <= 5", name="check_rating_range"),
+        # Один отзыв от пользователя на исполнителя
+        UniqueConstraint("user_id", "contractor_id", name="uq_reviews_user_contractor"),
     )
     
     def __repr__(self):

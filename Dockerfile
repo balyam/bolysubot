@@ -1,29 +1,30 @@
-# Dockerfile для развертывания в продакшене (опционально)
 FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app
 
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
-
-# Установка системных зависимостей
-RUN apt-get update && apt-get install -y \
-    gcc \
-    postgresql-client \
-    && rm -rf /var/lib/apt/lists/*
-
-# Копирование requirements
+# Зависимости отдельным слоем — пересобираются только при изменении requirements.txt
 COPY requirements.txt .
+RUN pip install -r requirements.txt
 
-# Установка Python зависимостей
-RUN pip install --no-cache-dir -r requirements.txt
+# Непривилегированный пользователь
+RUN useradd --create-home --uid 1000 app \
+    && mkdir -p /app/storage/photos/contractors \
+    && chown -R app:app /app/storage
 
-# Копирование кода приложения
-COPY . .
+COPY --chown=app:app . .
 
-# Создание директорий
-RUN mkdir -p storage/photos/contractors
+USER app
 
-# По умолчанию запускаем бота (можно переопределить в docker-compose)
-CMD ["python", "main.py"]
+EXPOSE 8000
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).status == 200 else 1)"
+
+# Через sh: не зависит от бита +x (в dev-compose код монтируется с хоста)
+ENTRYPOINT ["sh", "./docker-entrypoint.sh"]
+CMD ["python", "main_webhook.py"]

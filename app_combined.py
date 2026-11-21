@@ -69,7 +69,8 @@ async def lifespan(app: FastAPI):
         await bot.set_webhook(
             url=webhook_url,
             drop_pending_updates=True,
-            secret_token=settings.WEBHOOK_SECRET
+            secret_token=settings.WEBHOOK_SECRET,
+            allowed_updates=dp.resolve_used_update_types(),
         )
         logger.info("Webhook set successfully")
     else:
@@ -130,7 +131,7 @@ def create_app() -> FastAPI:
             # Получаем update
             try:
                 update_data = await request.json()
-                update = Update(**update_data)
+                update = Update.model_validate(update_data, context={"bot": bot})
                 await dp.feed_update(bot, update)
             except Exception:
                 # Отвечаем 200, чтобы Telegram не ретраил «битый» update бесконечно

@@ -1,9 +1,28 @@
+# Секреты и локальное окружение — никогда не попадают в образ
+.env
+.env.*
+!.env.prod.example
 venv/
 .venv/
 .git/
+.gitignore
+.claude/
+
+# Мусор
 __pycache__/
+**/__pycache__/
 *.py[cod]
-.env
-storage/
+.pytest_cache/
+.mypy_cache/
 .idea/
 .vscode/
+
+# Данные (монтируются volume)
+storage/
+
+# Не нужно в рантайме
+tests/
+*.md
+docker-compose*.yml
+Dockerfile
+Caddyfile

@@ -1,0 +1,74 @@
+# Продакшен: postgres + приложение (бот через webhook + админка) + Caddy (HTTPS).
+#
+# Запуск:
+#   docker-compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+#
+# --env-file нужен для подстановки ${...} ниже; env_file — для переменных внутри контейнера.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    # Порт наружу НЕ публикуется — база доступна только внутри docker-сети
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *logging
+
+  app:
+    build: .
+    image: osialmaty-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env.prod
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      WEBAPP_HOST: 0.0.0.0
+      WEBAPP_PORT: 8000
+      # Доверяем X-Forwarded-* от Caddy (иначе админка строит http:// ссылки)
+      FORWARDED_ALLOW_IPS: "*"
+    # Порт наружу НЕ публикуется — трафик идёт только через Caddy
+    expose:
+      - "8000"
+    volumes:
+      - photos:/app/storage
+    logging: *logging
+
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    logging: *logging
+
+volumes:
+  postgres_data:
+  photos:
+  caddy_data:
+  caddy_config:
